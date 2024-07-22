@@ -99,6 +99,40 @@ func (bcn *BlockchainNode) Transactions(w http.ResponseWriter, r *http.Request) 
 		}
 		io.WriteString(w, string(m))
 
+	case http.MethodPut:
+		decoder := json.NewDecoder((r.Body))
+		var t blockchain.TransactionRequest
+		err := decoder.Decode(&t)
+		if err != nil {
+			log.Printf("ERROR: %v", err)
+			io.WriteString(w, string(utils.JsonStatus("fail")))
+			return
+		}
+		if !t.Validate() {
+			log.Println("ERROR: missing field(S)")
+			io.WriteString(w, string(utils.JsonStatus("fail")))
+			return
+		}
+		publicKey := utils.String2PublicKey(*t.SenderPublicKey)
+		signature := utils.String2Signature(*t.Signature)
+		bc := bcn.GetBlockchain()
+		isUpdated := bc.AddTransaction(*t.SenderBlockchainAddress, *t.RecipientBlockchainAddress, *t.Value, publicKey, signature)
+
+		w.Header().Add("Content-Type", "application/json")
+		var m []byte
+		if !isUpdated {
+			w.WriteHeader(http.StatusBadRequest)
+			m = utils.JsonStatus("fail")
+		} else {
+			m = utils.JsonStatus("success")
+		}
+		io.WriteString(w, string(m))
+
+	case http.MethodDelete:
+		bc := bcn.GetBlockchain()
+		bc.ClearTransactionPool()
+		io.WriteString(w, string(utils.JsonStatus("success")))
+
 	default:
 		log.Println("ERROR: Invalid HTTP method")
 		w.WriteHeader(http.StatusBadRequest)
