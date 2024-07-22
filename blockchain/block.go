@@ -67,10 +67,10 @@ func (b *Block) MarshalJSON() ([]byte, error) {
 func (b *Block) UnmarshalJSON(data []byte) error {
 	var previousHash string
 	v := &struct {
-		Timestamp    *int64          `json: "timestamp"`
-		Nonce        *int            `json: "nonce"`
-		PreviousHash *string         `json: "previous_hash"`
-		Transactions *[]*Transaction `json: "transactions"`
+		Timestamp    *int64          `json:"timestamp"`
+		Nonce        *int            `json:"nonce"`
+		PreviousHash *string         `json:"previous_hash"`
+		Transactions *[]*Transaction `json:"transactions"`
 	}{
 		Timestamp:    &b.timestamp,
 		Nonce:        &b.nonce,

@@ -54,6 +54,8 @@ func (bc *Blockchain) Chain() []*Block {
 
 func (bc *Blockchain) Run() {
 	bc.StartSyncNeighbors()
+	bc.ResolveConflicts()
+	// bc.StartMining()
 }
 
 func (bc *Blockchain) SetNeightbors() {
@@ -96,6 +98,18 @@ func (bc *Blockchain) MarshalJSON() ([]byte, error) {
 	}{
 		Blocks: bc.chain,
 	})
+}
+
+func (bc *Blockchain) UnmarshalJSON(data []byte) error {
+	v := &struct {
+		Blocks *[]*Block `json:"chain"`
+	}{
+		Blocks: &bc.chain,
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (bc *Blockchain) CreateBlock(nonce int, previousHash [32]byte) *Block {
@@ -228,6 +242,17 @@ func (bc *Blockchain) Mining() bool {
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
 	log.Println("action=mining, status=success")
+
+	for _, n := range bc.neighbors {
+		endpoint := fmt.Sprintf("http://%s/consensus", n)
+		client := &http.Client{}
+		req, _ := http.NewRequest("PUT", endpoint, nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("%v", resp)
+		}
+	}
+
 	return true
 }
 
@@ -298,7 +323,7 @@ func (bc *Blockchain) ResolveConflicts() bool {
 		log.Printf("Resolved conflicts: blockchain was replaced")
 		return true
 	}
-	log.Printf("Resolved conflicts: blockchain was nor replaced")
+	log.Printf("Resolved conflicts: blockchain was not replaced")
 	return false
 }
 
@@ -312,16 +337,4 @@ func (ar *AmountResponse) MarshalJSON() ([]byte, error) {
 	}{
 		Amount: ar.Amount,
 	})
-}
-
-func (bc *Blockchain) UnmarshalJSON(data []byte) error {
-	v := &struct {
-		Blocks *[]*Block `json: "chain"`
-	}{
-		Blocks: &bc.chain,
-	}
-	if err := json.Unmarshal(data, &v); err != nil {
-		return err
-	}
-	return nil
 }
